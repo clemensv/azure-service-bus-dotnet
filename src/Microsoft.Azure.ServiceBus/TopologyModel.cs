@@ -3,10 +3,11 @@
 
 namespace Microsoft.Azure.ServiceBus
 {
-    using Core;
-
-    public interface IQueueClient : IReceiverClient, ISenderClient
+    public enum TopologyModel
     {
-        QueuePath QueueName { get; }
+        Other = 0,
+        AzureServiceBus = 1,
+        Artemis = 2,
     }
+
 }

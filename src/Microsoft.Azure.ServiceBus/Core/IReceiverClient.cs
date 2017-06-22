@@ -9,7 +9,7 @@ namespace Microsoft.Azure.ServiceBus.Core
 
     public interface IReceiverClient : IClientEntity
     {
-        string Path { get; }
+        EntityPath Path { get; }
 
         ReceiveMode ReceiveMode { get; }
 

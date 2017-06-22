@@ -43,7 +43,7 @@ namespace Microsoft.Azure.ServiceBus.UnitTests
             var topicClient = new TopicClient(TestUtility.NamespaceConnectionString, TestConstants.NonPartitionedTopicName);
             var subscriptionClient = new SubscriptionClient(
                 TestUtility.NamespaceConnectionString,
-                topicClient.TopicName,
+                TestConstants.NonPartitionedTopicName,
                 TestConstants.SubscriptionName,
                 ReceiveMode.PeekLock);
 
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.ServiceBus.UnitTests
             var topicClient = new TopicClient(TestUtility.NamespaceConnectionString, topicName);
             var subscriptionClient = new SubscriptionClient(
                 TestUtility.NamespaceConnectionString,
-                topicClient.TopicName,
+                topicName,
                 this.SubscriptionName,
                 ReceiveMode.PeekLock);
 

@@ -44,24 +44,23 @@ namespace Microsoft.Azure.ServiceBus.Core
             ReceiveMode receiveMode = ReceiveMode.PeekLock,
             RetryPolicy retryPolicy = null,
             int prefetchCount = DefaultPrefetchCount)
-            : this(entityPath, null, receiveMode, new ServiceBusNamespaceConnection(connectionString), null, retryPolicy, prefetchCount)
+            : this(new EntityPath(entityPath), null, receiveMode, new ServiceBusNamespaceConnection(connectionString), null, retryPolicy, prefetchCount)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(connectionString);
             }
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(entityPath);
-            }
-
+           
             this.ownsConnection = true;
-            var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(this.ServiceBusConnection.SasKeyName, this.ServiceBusConnection.SasKey);
-            this.CbsTokenProvider = new TokenProviderAdapter(tokenProvider, this.ServiceBusConnection.OperationTimeout);
+            if (this.ServiceBusConnection.SasKeyName != null)
+            {
+                var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(this.ServiceBusConnection.SasKeyName, this.ServiceBusConnection.SasKey);
+                this.CbsTokenProvider = new TokenProviderAdapter(tokenProvider, this.ServiceBusConnection.OperationTimeout);
+            }
         }
 
         internal MessageReceiver(
-            string entityPath,
+            EntityPath entityPath,
             MessagingEntityType? entityType,
             ReceiveMode receiveMode,
             ServiceBusConnection serviceBusConnection,
@@ -142,7 +141,7 @@ namespace Microsoft.Azure.ServiceBus.Core
             }
         }
 
-        public virtual string Path { get; private set; }
+        public virtual EntityPath Path { get; private set; }
 
         public DateTime LockedUntilUtc { get; protected set; }
 
@@ -834,7 +833,7 @@ namespace Microsoft.Azure.ServiceBus.Core
         {
             FilterSet filterMap = null;
 
-            MessagingEventSource.Log.AmqpReceiveLinkCreateStart(this.ClientId, false, this.EntityType, this.Path);
+            MessagingEventSource.Log.AmqpReceiveLinkCreateStart(this.ClientId, false, this.EntityType, this.Path.ToString());
 
             if (this.isSessionReceiver)
             {
@@ -846,7 +845,7 @@ namespace Microsoft.Azure.ServiceBus.Core
                 Role = true,
                 TotalLinkCredit = (uint)this.PrefetchCount,
                 AutoSendFlow = this.PrefetchCount > 0,
-                Source = new Source { Address = this.Path, FilterSet = filterMap },
+                Source = new Source { Address = string.Empty, FilterSet = filterMap },
                 SettleType = (this.ReceiveMode == ReceiveMode.PeekLock) ? SettleMode.SettleOnDispose : SettleMode.SettleOnSend
             };
 
@@ -868,9 +867,9 @@ namespace Microsoft.Azure.ServiceBus.Core
         // TODO: Consolidate the link creation paths
         async Task<RequestResponseAmqpLink> CreateRequestResponseLinkAsync(TimeSpan timeout)
         {
-            string entityPath = this.Path + '/' + AmqpClientConstants.ManagementAddress;
+            EntityPath entityPath = new EntityManagementPath(this.Path);
 
-            MessagingEventSource.Log.AmqpReceiveLinkCreateStart(this.ClientId, true, this.EntityType, entityPath);
+            MessagingEventSource.Log.AmqpReceiveLinkCreateStart(this.ClientId, true, this.EntityType, entityPath.ToString());
             AmqpLinkSettings linkSettings = new AmqpLinkSettings();
             linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, AmqpClientConstants.EntityTypeManagement);
 

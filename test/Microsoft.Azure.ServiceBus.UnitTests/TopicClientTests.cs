@@ -108,8 +108,8 @@ namespace Microsoft.Azure.ServiceBus.UnitTests
             var subscriptionDeadletterPath = EntityNameHelper.FormatDeadLetterPath(this.SubscriptionName);
             var deadLetterSubscriptionClient = new SubscriptionClient(
                 TestUtility.NamespaceConnectionString,
-                topicName,
-                subscriptionDeadletterPath);
+                topicName,                
+                subscriptionDeadletterPath, ReceiveMode.PeekLock);
 
             try
             {

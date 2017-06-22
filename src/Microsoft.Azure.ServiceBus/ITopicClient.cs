@@ -30,6 +30,6 @@ namespace Microsoft.Azure.ServiceBus
     /// </example>
     public interface ITopicClient : ISenderClient
     {
-        string TopicName { get; }
+        TopicPath TopicName { get; }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
             this.ReceiveMode = innerMessageReceiver.ReceiveMode;
         }
 
-        public override string Path
+        public override EntityPath Path
         {
             get { return this.InnerMessageReceiver.Path; }
         }

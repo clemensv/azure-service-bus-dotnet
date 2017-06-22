@@ -51,17 +51,20 @@ namespace Microsoft.Azure.ServiceBus
             : base($"{nameof(TopicClient)}{GetNextId()}({entityPath})", retryPolicy)
         {
             this.syncLock = new object();
-            this.TopicName = entityPath;
+            this.TopicName = new TopicPath(entityPath);
             this.ServiceBusConnection = serviceBusConnection;
-            this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
-                serviceBusConnection.SasKeyName,
-                serviceBusConnection.SasKey);
-            this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            if (serviceBusConnection.SasKeyName != null)
+            {
+                this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
+                    serviceBusConnection.SasKeyName,
+                    serviceBusConnection.SasKey);
+                this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            }
         }
 
-        public string TopicName { get; }
+        public TopicPath TopicName { get; }
 
-        public string Path => this.TopicName;
+        public EntityPath Path => this.TopicName;
 
         internal MessageSender InnerSender
         {

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
         MessageReceiver innerReceiver;
 
         public AmqpSubscriptionClient(
-            string path,
+            EntityPath path,
             ServiceBusConnection servicebusConnection,
             RetryPolicy retryPolicy,
             ICbsTokenProvider cbsTokenProvider,
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
         ReceiveMode ReceiveMode { get; set; }
 
-        string Path { get; }
+        EntityPath Path { get; }
 
         public Task CloseAsync()
         {

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
     {
         public AmqpSessionClient(
             string clientId,
-            string entityPath,
+            EntityPath entityPath,
             MessagingEntityType entityType,
             ReceiveMode receiveMode,
             int prefetchCount,
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
         string ClientId { get; }
 
-        string EntityPath { get; }
+        EntityPath EntityPath { get; }
 
         MessagingEntityType EntityType { get; }
 
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
         {
             MessagingEventSource.Log.AmqpSessionClientAcceptMessageSessionStart(
                 this.ClientId,
-                this.EntityPath,
+                this.EntityPath.ToString(),
                 this.ReceiveMode,
                 this.PrefetchCount,
                 sessionId);
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
             {
                 MessagingEventSource.Log.AmqpSessionClientAcceptMessageSessionException(
                     this.ClientId,
-                    this.EntityPath,
+                    this.EntityPath.ToString(),
                     exception);
 
                 await receiver.CloseAsync().ConfigureAwait(false);
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
             MessagingEventSource.Log.AmqpSessionClientAcceptMessageSessionStop(
                 this.ClientId,
-                this.EntityPath,
+                this.EntityPath.ToString(),
                 session.SessionId);
 
             return session;

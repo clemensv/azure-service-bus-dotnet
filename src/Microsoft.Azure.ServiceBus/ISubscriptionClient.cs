@@ -9,7 +9,7 @@ namespace Microsoft.Azure.ServiceBus
 
     public interface ISubscriptionClient : IReceiverClient
     {
-        string TopicPath { get; }
+        TopicPath TopicPath { get; }
 
         string SubscriptionName { get; }
 

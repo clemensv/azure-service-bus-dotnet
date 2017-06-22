@@ -71,7 +71,7 @@ namespace Microsoft.Azure.ServiceBus.UnitTests
             var queueClient = new QueueClient(TestUtility.NamespaceConnectionString, queueName);
 
             // Create DLQ Client To Receive DeadLetteredMessages
-            var deadLetterQueueClient = new QueueClient(TestUtility.NamespaceConnectionString, EntityNameHelper.FormatDeadLetterPath(queueClient.QueueName));
+            var deadLetterQueueClient = new QueueClient(TestUtility.NamespaceConnectionString, queueName);
 
             try
             {

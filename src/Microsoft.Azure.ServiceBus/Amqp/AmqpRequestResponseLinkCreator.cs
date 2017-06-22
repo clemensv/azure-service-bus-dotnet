@@ -7,17 +7,29 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
     public class AmqpRequestResponseLinkCreator : AmqpLinkCreator
     {
-        readonly string entityPath;
+        readonly EntityPath entityPath;
+        readonly ServiceBusConnection serviceBusConnection;
 
-        public AmqpRequestResponseLinkCreator(string entityPath, ServiceBusConnection serviceBusConnection, string[] requiredClaims, ICbsTokenProvider cbsTokenProvider, AmqpLinkSettings linkSettings)
+        public AmqpRequestResponseLinkCreator(EntityPath entityPath, ServiceBusConnection serviceBusConnection, string[] requiredClaims, ICbsTokenProvider cbsTokenProvider, AmqpLinkSettings linkSettings)
             : base(entityPath, serviceBusConnection, requiredClaims, cbsTokenProvider, linkSettings)
         {
             this.entityPath = entityPath;
+            this.serviceBusConnection = serviceBusConnection;
         }
 
         protected override AmqpObject OnCreateAmqpLink(AmqpConnection connection, AmqpLinkSettings linkSettings, AmqpSession amqpSession)
         {
-            AmqpObject link = new RequestResponseAmqpLink(AmqpClientConstants.EntityTypeManagement, amqpSession, this.entityPath, linkSettings.Properties);
+            if ((linkSettings.Target as Azure.Amqp.Framing.Target) != null &&
+                ((Azure.Amqp.Framing.Target)linkSettings.Target).Address.ToString() == string.Empty)
+            {
+                ((Azure.Amqp.Framing.Target)linkSettings.Target).Address = entityPath.Resolve(serviceBusConnection.ConnectionCapabilities.TopologyModel);
+            }
+            else if ((linkSettings.Source as Azure.Amqp.Framing.Source) != null &&
+                ((Azure.Amqp.Framing.Source)linkSettings.Source).Address.ToString() == string.Empty)
+            {
+                ((Azure.Amqp.Framing.Source)linkSettings.Source).Address = entityPath.Resolve(serviceBusConnection.ConnectionCapabilities.TopologyModel);
+            }
+            AmqpObject link = new RequestResponseAmqpLink(AmqpClientConstants.EntityTypeManagement, amqpSession, this.entityPath.Resolve(serviceBusConnection.ConnectionCapabilities.TopologyModel), linkSettings.Properties);
             linkSettings.LinkName = $"{connection.Settings.ContainerId};{connection.Identifier}:{amqpSession.Identifier}:{link.Identifier}";
             return link;
         }

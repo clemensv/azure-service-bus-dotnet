@@ -30,26 +30,26 @@ namespace Microsoft.Azure.ServiceBus.Core
             string connectionString, 
             string entityPath, 
             RetryPolicy retryPolicy = null)
-            : this(entityPath, null, new ServiceBusNamespaceConnection(connectionString), null, retryPolicy)
+            : this(new EntityPath(entityPath), null, new ServiceBusNamespaceConnection(connectionString), null, retryPolicy)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(connectionString);
             }
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(entityPath);
-            }
+            
 
             this.ownsConnection = true;
-            var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
-                this.ServiceBusConnection.SasKeyName,
-                this.ServiceBusConnection.SasKey);
-            this.CbsTokenProvider = new TokenProviderAdapter(tokenProvider, this.ServiceBusConnection.OperationTimeout);
+            if (this.ServiceBusConnection.SasKeyName != null)
+            {
+                var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
+                    this.ServiceBusConnection.SasKeyName,
+                    this.ServiceBusConnection.SasKey);
+                this.CbsTokenProvider = new TokenProviderAdapter(tokenProvider, this.ServiceBusConnection.OperationTimeout);
+            }
         }
 
         internal MessageSender(
-            string entityPath,
+            EntityPath entityPath,
             MessagingEntityType? entityType,
             ServiceBusConnection serviceBusConnection,
             ICbsTokenProvider cbsTokenProvider,
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.ServiceBus.Core
 
         internal MessagingEntityType? EntityType { get; private set; }
 
-        public virtual string Path { get; private set; }
+        public virtual EntityPath Path { get; private set; }
 
         ServiceBusConnection ServiceBusConnection { get; }
 
@@ -302,13 +302,13 @@ namespace Microsoft.Azure.ServiceBus.Core
 
         async Task<SendingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
-            MessagingEventSource.Log.AmqpSendLinkCreateStart(this.ClientId, this.EntityType, this.Path);
+            MessagingEventSource.Log.AmqpSendLinkCreateStart(this.ClientId, this.EntityType, this.Path.ToString());
 
             AmqpLinkSettings linkSettings = new AmqpLinkSettings
             {
                 Role = false,
                 InitialDeliveryCount = 0,
-                Target = new Target { Address = this.Path },
+                Target = new Target { Address = string.Empty },
                 Source = new Source { Address = this.ClientId },
             };
             if (this.EntityType != null)
@@ -325,7 +325,7 @@ namespace Microsoft.Azure.ServiceBus.Core
 
         async Task<RequestResponseAmqpLink> CreateRequestResponseLinkAsync(TimeSpan timeout)
         {
-            string entityPath = this.Path + '/' + AmqpClientConstants.ManagementAddress;
+            EntityPath entityPath = new EntityManagementPath( this.Path );
             AmqpLinkSettings linkSettings = new AmqpLinkSettings();
             linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, AmqpClientConstants.EntityTypeManagement);
 

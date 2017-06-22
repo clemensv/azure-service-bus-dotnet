@@ -10,13 +10,13 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
     public abstract class AmqpLinkCreator
     {
-        readonly string entityPath;
+        readonly EntityPath entityPath;
         readonly ServiceBusConnection serviceBusConnection;
         readonly string[] requiredClaims;
         readonly ICbsTokenProvider cbsTokenProvider;
         readonly AmqpLinkSettings amqpLinkSettings;
 
-        protected AmqpLinkCreator(string entityPath, ServiceBusConnection serviceBusConnection, string[] requiredClaims, ICbsTokenProvider cbsTokenProvider, AmqpLinkSettings amqpLinkSettings)
+        protected AmqpLinkCreator(EntityPath entityPath, ServiceBusConnection serviceBusConnection, string[] requiredClaims, ICbsTokenProvider cbsTokenProvider, AmqpLinkSettings amqpLinkSettings)
         {
             this.entityPath = entityPath;
             this.serviceBusConnection = serviceBusConnection;
@@ -31,17 +31,21 @@ namespace Microsoft.Azure.ServiceBus.Amqp
 
             MessagingEventSource.Log.AmqpGetOrCreateConnectionStart();
             AmqpConnection connection = await this.serviceBusConnection.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-            MessagingEventSource.Log.AmqpGetOrCreateConnectionStop(this.entityPath, connection.ToString(), connection.State.ToString());
+            string resolvedEntityPath = this.entityPath.Resolve(this.serviceBusConnection.ConnectionCapabilities.TopologyModel);
+            MessagingEventSource.Log.AmqpGetOrCreateConnectionStop(resolvedEntityPath, connection.ToString(), connection.State.ToString());
 
-            // Authenticate over CBS
-            AmqpCbsLink cbsLink = connection.Extensions.Find<AmqpCbsLink>();
-            Uri address = new Uri(this.serviceBusConnection.Endpoint, this.entityPath);
-            string audience = address.AbsoluteUri;
-            string resource = address.AbsoluteUri;
+            if (cbsTokenProvider != null)
+            {
+                // Authenticate over CBS
+                AmqpCbsLink cbsLink = connection.Extensions.Find<AmqpCbsLink>();
+                Uri address = new Uri(this.serviceBusConnection.Endpoint, resolvedEntityPath);
+                string audience = address.AbsoluteUri;
+                string resource = address.AbsoluteUri;
 
-            MessagingEventSource.Log.AmqpSendAuthenticanTokenStart(address, audience, resource, this.requiredClaims);
-            await cbsLink.SendTokenAsync(this.cbsTokenProvider, address, audience, resource, this.requiredClaims, timeoutHelper.RemainingTime()).ConfigureAwait(false);
-            MessagingEventSource.Log.AmqpSendAuthenticanTokenStop();
+                MessagingEventSource.Log.AmqpSendAuthenticanTokenStart(address, audience, resource, this.requiredClaims);
+                await cbsLink.SendTokenAsync(this.cbsTokenProvider, address, audience, resource, this.requiredClaims, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+                MessagingEventSource.Log.AmqpSendAuthenticanTokenStop();
+            }
 
             AmqpSession session = null;
             try
@@ -53,7 +57,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
             }
             catch (Exception exception)
             {
-                MessagingEventSource.Log.AmqpSessionCreationException(this.entityPath, connection, exception);
+                MessagingEventSource.Log.AmqpSessionCreationException(resolvedEntityPath, connection, exception);
                 session?.Abort();
                 throw;
             }
@@ -68,7 +72,7 @@ namespace Microsoft.Azure.ServiceBus.Amqp
             catch (Exception exception)
             {
                 MessagingEventSource.Log.AmqpLinkCreationException(
-                    this.entityPath,
+                    resolvedEntityPath,
                     session,
                     connection,
                     exception);

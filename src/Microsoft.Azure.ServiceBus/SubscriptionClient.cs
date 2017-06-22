@@ -37,13 +37,39 @@ namespace Microsoft.Azure.ServiceBus
         /// <summary>
         /// Instantiates a new <see cref="SubscriptionClient"/> to perform operations on a subscription.
         /// </summary>
+        /// <param name="connectionStringBuilder"><see cref="ServiceBusConnectionStringBuilder"/> having namespace and topic information.</param>
+        /// <param name="subscriptionName">Name of the subscription.</param>
+        /// <param name="receiveMode">Mode of receive of messages. Defaults to <see cref="ReceiveMode"/>.PeekLock.</param>
+        /// <param name="retryPolicy">Retry policy for subscription operations. Defaults to <see cref="RetryPolicy.Default"/></param>
+        public SubscriptionClient(ServiceBusConnectionStringBuilder connectionStringBuilder, EntityPath subscriptionName, ReceiveMode receiveMode = ReceiveMode.PeekLock, RetryPolicy retryPolicy = null)
+            : this(new ServiceBusNamespaceConnection(connectionStringBuilder.GetNamespaceConnectionString()),
+                   new TopicPath(connectionStringBuilder.EntityPath), subscriptionName, receiveMode, retryPolicy)
+        {
+        }
+
+        /// <summary>
+        /// Instantiates a new <see cref="SubscriptionClient"/> to perform operations on a subscription.
+        /// </summary>
+        /// <param name="connectionString">Namespace connection string. <remarks>Should not contain topic information.</remarks></param>
+        /// <param name="topicPath">Path to the topic.</param>
+        /// <param name="subscriptionName">Name of the subscription.</param>
+        /// <param name="receiveMode">Mode of receive of messages. Defaults to <see cref="ReceiveMode"/>.PeekLock.</param>
+        /// <param name="retryPolicy">Retry policy for subscription operations. Defaults to <see cref="RetryPolicy.Default"/></param>
+        public SubscriptionClient(string connectionString, string topicPath, EntityPath subscriptionName, ReceiveMode receiveMode = ReceiveMode.PeekLock, RetryPolicy retryPolicy = null)
+            : this(new ServiceBusNamespaceConnection(connectionString), new TopicPath(topicPath), subscriptionName, receiveMode, retryPolicy ?? RetryPolicy.Default)
+        {
+        }
+
+        /// <summary>
+        /// Instantiates a new <see cref="SubscriptionClient"/> to perform operations on a subscription.
+        /// </summary>
         /// <param name="connectionString">Namespace connection string. <remarks>Should not contain topic information.</remarks></param>
         /// <param name="topicPath">Path to the topic.</param>
         /// <param name="subscriptionName">Name of the subscription.</param>
         /// <param name="receiveMode">Mode of receive of messages. Defaults to <see cref="ReceiveMode"/>.PeekLock.</param>
         /// <param name="retryPolicy">Retry policy for subscription operations. Defaults to <see cref="RetryPolicy.Default"/></param>
         public SubscriptionClient(string connectionString, string topicPath, string subscriptionName, ReceiveMode receiveMode = ReceiveMode.PeekLock, RetryPolicy retryPolicy = null)
-            : this(new ServiceBusNamespaceConnection(connectionString), topicPath, subscriptionName, receiveMode, retryPolicy ?? RetryPolicy.Default)
+        : this(new ServiceBusNamespaceConnection(connectionString), topicPath, subscriptionName, receiveMode, retryPolicy ?? RetryPolicy.Default)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {
@@ -61,26 +87,34 @@ namespace Microsoft.Azure.ServiceBus
             this.ownsConnection = true;
         }
 
-        SubscriptionClient(ServiceBusNamespaceConnection serviceBusConnection, string topicPath, string subscriptionName, ReceiveMode receiveMode, RetryPolicy retryPolicy)
+        public SubscriptionClient(ServiceBusNamespaceConnection serviceBusConnection, TopicPath topicPath, EntityPath subscriptionName, ReceiveMode receiveMode, RetryPolicy retryPolicy)
             : base($"{nameof(SubscriptionClient)}{ClientEntity.GetNextId()}({subscriptionName})", retryPolicy)
         {
             this.syncLock = new object();
-            this.TopicPath = topicPath;
             this.ServiceBusConnection = serviceBusConnection;
-            this.SubscriptionName = subscriptionName;
-            this.Path = EntityNameHelper.FormatSubscriptionPath(this.TopicPath, this.SubscriptionName);
+            this.TopicPath = TopicPath;
+            this.Path = subscriptionName;
             this.ReceiveMode = receiveMode;
-            this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
-                serviceBusConnection.SasKeyName,
-                serviceBusConnection.SasKey);
-            this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            if (serviceBusConnection.SasKeyName != null)
+            {
+                this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
+                    serviceBusConnection.SasKeyName,
+                    serviceBusConnection.SasKey);
+                this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            }
         }
 
-        public string TopicPath { get; }
+        SubscriptionClient(ServiceBusNamespaceConnection serviceBusConnection, string topicPath, string subscriptionName, ReceiveMode receiveMode, RetryPolicy retryPolicy)
+            : this(serviceBusConnection, new TopicPath(topicPath), new SubscriptionPath(topicPath, subscriptionName), receiveMode, retryPolicy)
+        {
 
-        public string Path { get; }
+        }
 
-        public string SubscriptionName { get; }
+        public TopicPath TopicPath { get; }
+
+        public EntityPath Path { get; }
+
+        public string SubscriptionName { get => (Path as SubscriptionPath)?.SubscriptionName; }
 
         public ReceiveMode ReceiveMode { get; }
 

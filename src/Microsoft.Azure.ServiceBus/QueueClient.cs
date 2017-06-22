@@ -62,20 +62,23 @@ namespace Microsoft.Azure.ServiceBus
             : base($"{nameof(QueueClient)}{ClientEntity.GetNextId()}({entityPath})", retryPolicy)
         {
             this.syncLock = new object();
-            this.QueueName = entityPath;
+            this.QueueName = new QueuePath(entityPath);
             this.ReceiveMode = receiveMode;
             this.ServiceBusConnection = serviceBusConnection;
-            this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
-                serviceBusConnection.SasKeyName,
-                serviceBusConnection.SasKey);
-            this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            if (serviceBusConnection.SasKeyName != null)
+            {
+                this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(
+                    serviceBusConnection.SasKeyName,
+                    serviceBusConnection.SasKey);
+                this.CbsTokenProvider = new TokenProviderAdapter(this.TokenProvider, serviceBusConnection.OperationTimeout);
+            }
         }
 
-        public string QueueName { get; }
+        public QueuePath QueueName { get; }
 
         public ReceiveMode ReceiveMode { get; }
 
-        public string Path => this.QueueName;
+        public EntityPath Path => this.QueueName;
 
         /// <summary>
         /// Gets or sets the number of messages that the queue client can simultaneously request.

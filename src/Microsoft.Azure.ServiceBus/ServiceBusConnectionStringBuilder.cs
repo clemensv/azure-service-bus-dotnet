@@ -15,6 +15,8 @@ namespace Microsoft.Azure.ServiceBus
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
+        static readonly string SaslPlainUsernameConfigName = "SaslPlainUsername";
+        static readonly string SaslPlainPasswordConfigName = "SaslPlainPassword";
         static readonly string EntityPathConfigName = "EntityPath";
 
         /// <summary>
@@ -81,6 +83,17 @@ namespace Microsoft.Azure.ServiceBus
         public string SasKey { get; set; }
 
         /// <summary>
+        /// Get the SASL plain username value from the connection string
+        /// </summary>
+        /// <value>SASL plain username</value>
+        public string SaslPlainUsername { get; set; }
+
+        /// <summary>
+        /// Get the SASL plain password from the connection string
+        /// </summary>
+        public string SaslPlainPassword { get; set; }
+
+        /// <summary>
         /// Returns an interoperable connection string that can be used to connect to ServiceBus Namespace
         /// </summary>
         /// <returns>Namespace connection string</returns>
@@ -99,7 +112,17 @@ namespace Microsoft.Azure.ServiceBus
 
             if (!string.IsNullOrWhiteSpace(this.SasKey))
             {
-                connectionStringBuilder.Append($"{SharedAccessKeyConfigName}{KeyValueSeparator}{this.SasKey}");
+                connectionStringBuilder.Append($"{SharedAccessKeyConfigName}{KeyValueSeparator}{this.SasKey}{KeyValuePairDelimiter}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.SaslPlainUsername))
+            {
+                connectionStringBuilder.Append($"{SaslPlainUsernameConfigName}{KeyValueSeparator}{this.SaslPlainUsername}{KeyValuePairDelimiter}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.SaslPlainPassword))
+            {
+                connectionStringBuilder.Append($"{SaslPlainPasswordConfigName}{KeyValueSeparator}{this.SaslPlainPassword}");
             }
 
             return connectionStringBuilder.ToString();
@@ -141,28 +164,46 @@ namespace Microsoft.Azure.ServiceBus
             {
                 // Now split based on the _first_ '='
                 string[] keyAndValue = keyValuePair.Split(new[] { KeyValueSeparator }, 2);
-                string key = keyAndValue[0];
+                string key = keyAndValue[0].Trim();
                 if (keyAndValue.Length != 2)
                 {
                     throw Fx.Exception.Argument(nameof(connectionString), $"Value for the connection string parameter name '{key}' was not found.");
                 }
 
-                string value = keyAndValue[1];
+                string value = keyAndValue[1].Trim();
                 if (key.Equals(EndpointConfigName, StringComparison.OrdinalIgnoreCase))
                 {
-                    this.Endpoint = new Uri(value);
-                }
-                else if (key.Equals(SharedAccessKeyNameConfigName, StringComparison.OrdinalIgnoreCase))
-                {
-                    this.SasKeyName = value;
+                    Uri uri = new Uri(value);
+                    if ( !string.IsNullOrEmpty(uri.UserInfo))
+                    {
+                        string[] userInfo = uri.UserInfo.Split(':');
+                        this.SaslPlainUsername = userInfo[0];
+                        if (userInfo.Length > 1)
+                        {
+                            this.SaslPlainPassword = userInfo[1];
+                        }
+                    }
+                    this.Endpoint = new UriBuilder(uri.Scheme, uri.Host, uri.Port, uri.PathAndQuery).Uri;
                 }
                 else if (key.Equals(EntityPathConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.EntityPath = value;
                 }
+                else if (key.Equals(SharedAccessKeyNameConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.SasKeyName = value;
+                }
                 else if (key.Equals(SharedAccessKeyConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.SasKey = value;
+                }
+                else if (key.Equals(SaslPlainUsernameConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.SaslPlainUsername = value;
+                }
+                else if (key.Equals(SaslPlainPasswordConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.SaslPlainPassword = value;
                 }
                 else
                 {
